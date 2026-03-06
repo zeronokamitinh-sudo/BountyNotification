@@ -20,8 +20,7 @@ if executor then
         game.Players.LocalPlayer:Kick("Not support This Exploit ")
     end
 end
-local WebhookURL = ""
-
+local WebhookURL = _G.WebhookURL or ""
 local Config = {
     BotName = "ZeroNokami",
     Avatar = "https://i.imgur.com/Bui2u4v.png",
