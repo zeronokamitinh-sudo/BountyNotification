@@ -1,0 +1,244 @@
+local executor = getexecutorname() or identifyexecutor()
+if executor then
+    if string.find(executor, "Delta") or string.find(executor, "Krnl") or string.find(executor, "Arceus") or string.find(executor,"Swift") or string.find(executor, "Awp") or string.find(executor, "Volcano")  or string.find(executor, "Argon") or string.find(executor, "Macsploit") or string.find(executor, "Potassium") or string.find(executor, "CodeX") or string.find(executor, "Velocity") or string.find(executor, "Ronix") then
+        print("Supported Executor!")
+    elseif string.find(executor, "Xeno") then
+        game.Players.LocalPlayer:Kick("Not support This Exploit")
+    elseif string.find(executor, "Nezur") then
+        game.Players.LocalPlayer:Kick("Not support This Exploit ")
+    elseif string.find(executor,"TNG") then
+        game.Players.LocalPlayer:Kick("Not support This Exploit ")
+    elseif string.find(executor,"Solara") then
+        game.Players.LocalPlayer:Kick("Not support This Exploit")
+    elseif string.find(executor,"JJSploit") then
+        game.Players.LocalPlayer:Kick("Not support This Exploit ")
+    elseif string.find(executor,"SynapseX") then
+        game.Players.LocalPlayer:Kick("Not support This Exploit ")
+    elseif not executor then
+        game.Players.LocalPlayer:Kick("Not support This Exploit")
+    else
+        game.Players.LocalPlayer:Kick("Not support This Exploit ")
+    end
+end
+local WebhookURL = ""
+
+local Config = {
+    BotName = "ZeroNokami",
+    Avatar = "https://i.imgur.com/Bui2u4v.png",
+    Icon = "https://i.imgur.com/LfeYgCd.png"
+}
+
+local Session = {
+    LastFruit = "None",
+    GainedBounty = 0
+}
+
+-- ==========================================
+-- KHỞI TẠO DỊCH VỤ
+-- ==========================================
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function getPlayerThumbnail()
+    return "https://www.roblox.com/headshot-thumbnail/image?userId="..LocalPlayer.UserId.."&width=420&height=420&format=png"
+end
+
+-- ==========================================
+-- FIX BLOX FRUITS: Tìm bounty đúng path
+-- Blox Fruits dùng nhiều tên khác nhau tùy Sea:
+-- Sea 1/2: "Bounty" | Sea 3: "Honor" | hoặc cả 2
+-- ==========================================
+local bountyObj = nil
+
+-- Danh sách tên bounty có thể có trong Blox Fruits
+local BOUNTY_KEYS = {"Bounty", "Honor", "Beli", "Kills"}
+
+local function findBountyInLeaderstats(leaderstats)
+    for _, key in ipairs(BOUNTY_KEYS) do
+        local obj = leaderstats:FindFirstChild(key)
+        if obj and obj:IsA("IntValue") or (obj and obj:IsA("NumberValue")) then
+            return obj
+        end
+    end
+    -- Fallback: lấy child đầu tiên là IntValue/NumberValue
+    for _, child in ipairs(leaderstats:GetChildren()) do
+        if child:IsA("IntValue") or child:IsA("NumberValue") then
+            return child
+        end
+    end
+    return nil
+end
+
+local function getBounty()
+    if bountyObj then
+        return bountyObj.Value
+    end
+    -- Retry fallback khi bountyObj chưa được gán
+    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    if leaderstats then
+        local obj = findBountyInLeaderstats(leaderstats)
+        if obj then return obj.Value end
+    end
+    return 0
+end
+
+-- ==========================================
+-- HÀM GỬI WEBHOOK
+-- ==========================================
+local function sendStatusWebhook(title, statusColor)
+    local currentBounty = getBounty()
+    local playerImg = getPlayerThumbnail()
+    local bountyLabel = bountyObj and bountyObj.Name or "Bounty"
+
+    local payload = {
+        ["username"] = Config.BotName,
+        ["avatar_url"] = Config.Avatar,
+        ["embeds"] = {{
+            ["color"] = statusColor,
+            ["title"] = "📈 " .. title,
+            ["description"] = "Real-time report for **" .. LocalPlayer.Name .. "**",
+            ["fields"] = {
+                {["name"] = "🏷️ Device/User", ["value"] = "```" .. LocalPlayer.Name .. "```", ["inline"] = true},
+                {["name"] = "💰 " .. bountyLabel .. " (Current)", ["value"] = "```" .. tostring(currentBounty) .. "```", ["inline"] = true},
+                {["name"] = "⚔️ " .. bountyLabel .. " Gained", ["value"] = "```+" .. tostring(Session.GainedBounty) .. "```", ["inline"] = true},
+                {["name"] = "🍎 Fruit", ["value"] = "```" .. Session.LastFruit .. "```", ["inline"] = false},
+                {["name"] = "✅ Status", ["value"] = "```🟢 Online```", ["inline"] = true}
+            },
+            ["thumbnail"] = {["url"] = Config.Icon},
+            ["image"] = {["url"] = playerImg},
+            ["footer"] = {
+                ["text"] = "Made with 🇻🇳 by ZeroNokami | Hữu Tìnhdz",
+                ["icon_url"] = Config.Icon
+            },
+            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+
+    local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if request then
+        task.spawn(function()
+            pcall(function()
+                request({
+                    Url = WebhookURL,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = HttpService:JSONEncode(payload)
+                })
+            end)
+        end)
+    end
+end
+
+-- ==========================================
+-- LOGIC 1: THEO DÕI BOUNTY - FIX BLOX FRUITS
+-- Đợi leaderstats load xong VÀ bounty có giá trị > 0 (hoặc timeout)
+-- ==========================================
+task.spawn(function()
+    -- Bước 1: Đợi leaderstats xuất hiện
+    local leaderstats = LocalPlayer:WaitForChild("leaderstats", 60)
+    if not leaderstats then
+        warn("[ZeroMonitor] Không tìm thấy leaderstats!")
+        return
+    end
+
+    -- Bước 2: Đợi ít nhất 1 child xuất hiện trong leaderstats
+    if #leaderstats:GetChildren() == 0 then
+        leaderstats.ChildAdded:Wait()
+    end
+
+    -- Bước 3: Thêm delay nhỏ để Blox Fruits sync giá trị từ server
+    task.wait(3)
+
+    -- Bước 4: Tìm đúng object bounty
+    local resolved = findBountyInLeaderstats(leaderstats)
+
+    -- Nếu vẫn chưa thấy, thử WaitForChild từng key
+    if not resolved then
+        for _, key in ipairs(BOUNTY_KEYS) do
+            local obj = leaderstats:WaitForChild(key, 5)
+            if obj then
+                resolved = obj
+                break
+            end
+        end
+    end
+
+    if not resolved then
+        warn("[ZeroMonitor] Không tìm thấy stat bounty/honor trong leaderstats!")
+        -- Debug: in ra tất cả children
+        for _, c in ipairs(leaderstats:GetChildren()) do
+            warn("[ZeroMonitor] Found stat: " .. c.Name .. " = " .. tostring(c.Value))
+        end
+        return
+    end
+
+    -- Bước 5: Đợi thêm cho đến khi giá trị sync (tối đa 10 giây)
+    -- Blox Fruits đôi khi gán value sau vài giây
+    local syncWait = 0
+    while resolved.Value == 0 and syncWait < 10 do
+        task.wait(1)
+        syncWait += 1
+    end
+
+    -- Gán bountyObj toàn cục
+    bountyObj = resolved
+    local lastBounty = bountyObj.Value
+
+    warn("[ZeroMonitor] Đã tìm thấy: " .. bountyObj.Name .. " = " .. tostring(lastBounty))
+
+    -- Bước 6: Lắng nghe thay đổi
+    bountyObj:GetPropertyChangedSignal("Value"):Connect(function()
+        local newVal = bountyObj.Value
+        local diff = newVal - lastBounty
+        if diff ~= 0 then
+            Session.GainedBounty = diff
+            if diff > 0 then
+                sendStatusWebhook("BOUNTY UPDATE - WINNER ⚔️", 65280)
+            else
+                sendStatusWebhook("BOUNTY UPDATE - LOSS 💔", 16711680)
+            end
+        end
+        lastBounty = newVal
+    end)
+end)
+
+-- ==========================================
+-- LOGIC 2: BÁO CÁO ĐỊNH KỲ
+-- Đợi bountyObj được gán rồi mới gửi lần đầu
+-- ==========================================
+task.spawn(function()
+    local waited = 0
+    while bountyObj == nil and waited < 20 do
+        task.wait(1)
+        waited += 1
+    end
+
+    sendStatusWebhook("SYSTEM STATUS MONITOR", 16777215)
+
+    while true do
+        task.wait(180)
+        sendStatusWebhook("SYSTEM STATUS MONITOR", 3447003)
+    end
+end)
+
+-- ==========================================
+-- LOGIC 3: THEO DÕI TRÁI ÁC QUỶ
+-- ==========================================
+local function onItemAdded(child)
+    if child:IsA("Tool") and (child.Name:lower():find("fruit") or child.Name:find("Trái")) then
+        Session.LastFruit = child.Name
+        sendStatusWebhook("FRUIT COLLECTED 🍎", 16776960)
+    end
+end
+
+LocalPlayer.Backpack.ChildAdded:Connect(onItemAdded)
+LocalPlayer.CharacterAdded:Connect(function(char)
+    char.ChildAdded:Connect(onItemAdded)
+end)
+
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Zero Manager",
+    Text = "Hệ thống Monitor đã sẵn sàng!",
+    Duration = 5
+})
